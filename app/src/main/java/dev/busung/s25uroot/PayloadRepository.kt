@@ -102,8 +102,9 @@ class PayloadRepository(private val context: Context) {
     private fun rawUrl(commit: String, path: String) = "$RAW_REPOSITORY/$commit/$path"
 
     private fun pinArtifactUrl(url: String, commit: String): String {
-        require(url.startsWith(MUTABLE_RAW_PREFIX)) { context.getString(R.string.repo_url_invalid) }
-        return "$RAW_REPOSITORY/$commit/${url.removePrefix(MUTABLE_RAW_PREFIX)}"
+        val prefix = ALLOWED_RAW_PREFIXES.firstOrNull { url.startsWith(it) }
+        require(prefix != null) { context.getString(R.string.repo_url_invalid) }
+        return "$RAW_REPOSITORY/$commit/${url.removePrefix(prefix)}"
     }
 
     private fun downloadBytes(url: String, maximum: Int): ByteArray {
@@ -137,10 +138,13 @@ class PayloadRepository(private val context: Context) {
 
     companion object {
         private const val COMMIT_API_URL =
-            "https://api.github.com/repos/BuSung-dev/Root-My-Galaxy-Payloads/git/ref/heads/main"
+            "https://api.github.com/repos/notfleshka/Root-My-Galaxy-Payloads-sm921b/git/ref/heads/main"
         private const val RAW_REPOSITORY =
-            "https://raw.githubusercontent.com/BuSung-dev/Root-My-Galaxy-Payloads"
-        private const val MUTABLE_RAW_PREFIX = "$RAW_REPOSITORY/main/"
+            "https://raw.githubusercontent.com/notfleshka/Root-My-Galaxy-Payloads-sm921b"
+        private val ALLOWED_RAW_PREFIXES = listOf(
+            "https://raw.githubusercontent.com/BuSung-dev/Root-My-Galaxy-Payloads/main/",
+            "$RAW_REPOSITORY/main/",
+        )
         private const val MAX_COMMIT_RESPONSE_BYTES = 16 * 1024
         private const val MAX_MANIFEST_BYTES = 256 * 1024
     }
