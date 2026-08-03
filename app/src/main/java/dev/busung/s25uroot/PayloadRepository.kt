@@ -20,8 +20,8 @@ class PayloadRepository(private val context: Context) {
         val commit = resolveMainCommit()
         val manifestBytes = downloadBytes(rawUrl(commit, "support/targets-v3.json"), MAX_MANIFEST_BYTES)
         return SupportManifest.parse(manifestBytes).targets.map { profile -> profile.copy(
-            exploit = profile.exploit.copy(url = pinArtifactUrl(profile.exploit.url, commit)),
-            kernelSu = profile.kernelSu.copy(url = pinArtifactUrl(profile.kernelSu.url, commit)),
+            exploit = profile.exploit.copy(url = pinArtifactUrl(normalizeArtifactUrl(profile.exploit.url), commit)),
+            kernelSu = profile.kernelSu.copy(url = pinArtifactUrl(normalizeArtifactUrl(profile.kernelSu.url), commit)),
         ) }
     }
 
@@ -106,6 +106,12 @@ class PayloadRepository(private val context: Context) {
         return "$RAW_REPOSITORY/$commit/${url.removePrefix(ALLOWED_RAW_PREFIX)}"
     }
 
+    private fun normalizeArtifactUrl(url: String): String {
+        return if (url.startsWith(LEGACY_RAW_PREFIX)) {
+            url.replace(LEGACY_RAW_PREFIX, ALLOWED_RAW_PREFIX)
+        } else url
+    }
+
     private fun downloadBytes(url: String, maximum: Int): ByteArray {
         val connection = open(url)
         val bytes = connection.inputStream.use { input ->
@@ -141,6 +147,7 @@ class PayloadRepository(private val context: Context) {
         private const val RAW_REPOSITORY =
             "https://raw.githubusercontent.com/notfleshka/Root-My-Galaxy-Payloads-sm921b"
         private const val ALLOWED_RAW_PREFIX = "$RAW_REPOSITORY/main/"
+        private const val LEGACY_RAW_PREFIX = "https://raw.githubusercontent.com/BuSung-dev/Root-My-Galaxy-Payloads/main/"
         private const val MAX_COMMIT_RESPONSE_BYTES = 16 * 1024
         private const val MAX_MANIFEST_BYTES = 256 * 1024
     }
