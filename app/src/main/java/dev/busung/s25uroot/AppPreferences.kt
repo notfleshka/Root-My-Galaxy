@@ -35,6 +35,8 @@ object AppPreferences {
     private const val ADVANCED_MODE = "advanced_mode"
 	private const val DISABLE_KSU_MODULES = "disable_ksu_modules"
     private const val SHIZUKU_MODE = "shizuku_mode"
+    private const val VERIFY_EXPLOIT_SIZE = "verify_exploit_size"
+    private const val PAYLOAD_REPOSITORY = "payload_repository"
     private const val CONSUMED_INSTALL_REQUEST = "consumed_install_request"
 
     fun accentColor(context: Context): AccentColor = AccentColor.fromStoredValue(
@@ -63,26 +65,6 @@ object AppPreferences {
     fun setAdvancedMode(context: Context, enabled: Boolean) {
         prefs(context).edit()
             .putBoolean(ADVANCED_MODE, enabled)
-            .apply()
-    }
-	
-	fun disableKsuModules(context: Context): Boolean =
-    context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
-        .getBoolean(DISABLE_KSU_MODULES, false)
-	
-	fun setDisableKsuModules(context: Context, enabled: Boolean) {
-    context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
-        .edit()
-        .putBoolean(DISABLE_KSU_MODULES, enabled)
-        .apply()
-	}
-
-    fun shizukuMode(context: Context): Boolean =
-        prefs(context).getBoolean(SHIZUKU_MODE, false)
-
-    fun setShizukuMode(context: Context, enabled: Boolean) {
-        prefs(context).edit()
-            .putBoolean(SHIZUKU_MODE, enabled)
             .apply()
     }
 

@@ -11,6 +11,7 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
@@ -85,6 +86,7 @@ import androidx.compose.material.icons.rounded.Save
 import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material.icons.rounded.VerifiedUser
 import androidx.compose.material.icons.rounded.Warning
+import androidx.compose.material.icons.rounded.UploadFile
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonGroupDefaults
@@ -105,6 +107,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -164,8 +167,6 @@ class MainActivity : ComponentActivity() {
     private var accentColor by mutableStateOf(AccentColor.Dynamic)
     private var themeMode by mutableStateOf(AppThemeMode.System)
     private var advancedMode by mutableStateOf(false)
-	private var disableKsuModules by mutableStateOf(false)
-    private var shizukuMode by mutableStateOf(false)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -174,8 +175,6 @@ class MainActivity : ComponentActivity() {
         accentColor = AppPreferences.accentColor(this)
         themeMode = AppPreferences.themeMode(this)
         advancedMode = AppPreferences.advancedMode(this)
-		disableKsuModules = AppPreferences.disableKsuModules(this)
-        shizukuMode = AppPreferences.shizukuMode(this)
         setContent {
             RootMyGalaxyTheme(accentColor = accentColor, themeMode = themeMode) {
                 RootApp(
@@ -183,8 +182,6 @@ class MainActivity : ComponentActivity() {
                     accentColor = accentColor,
                     themeMode = themeMode,
                     advancedMode = advancedMode,
-					disableKsuModules = disableKsuModules,
-                    shizukuMode = shizukuMode,
                     onAccentColorChanged = { color ->
                         AppPreferences.setAccentColor(this, color)
                         accentColor = color
@@ -196,14 +193,6 @@ class MainActivity : ComponentActivity() {
                     onAdvancedModeChanged = { enabled ->
                         AppPreferences.setAdvancedMode(this, enabled)
                         advancedMode = enabled
-                    },
-					onDisableKsuModulesChanged = { enabled ->
-						AppPreferences.setDisableKsuModules(this, enabled)
-						disableKsuModules = enabled
-					},
-                    onShizukuModeChanged = { enabled ->
-                        AppPreferences.setShizukuMode(this, enabled)
-                        shizukuMode = enabled
                     },
                     openInstaller = { profileId ->
                         val installer = Intent(this, InstallActivity::class.java)
@@ -285,13 +274,9 @@ private fun RootApp(
     accentColor: AccentColor,
     themeMode: AppThemeMode,
     advancedMode: Boolean,
-	disableKsuModules: Boolean,
-    shizukuMode: Boolean,
     onAccentColorChanged: (AccentColor) -> Unit,
     onThemeModeChanged: (AppThemeMode) -> Unit,
     onAdvancedModeChanged: (Boolean) -> Unit,
-	onDisableKsuModulesChanged: (Boolean) -> Unit,
-    onShizukuModeChanged: (Boolean) -> Unit,
     openInstaller: (String?) -> Unit,
 ) {
     val installState by installViewModel.state.collectAsStateWithLifecycle()
@@ -510,16 +495,9 @@ private fun RootApp(
                     accentColor = accentColor,
                     themeMode = themeMode,
                     advancedMode = advancedMode,
-					disableKsuModules = disableKsuModules,
-                    shizukuMode = shizukuMode,
-                    updateStatus = updateStatus,
-                    onCheckForUpdate = checkForUpdate,
-                    onStartDownload = startDownload,
                     onAccentColorChanged = onAccentColorChanged,
                     onThemeModeChanged = onThemeModeChanged,
                     onAdvancedModeChanged = onAdvancedModeChanged,
-					onDisableKsuModulesChanged = onDisableKsuModulesChanged,
-                    onShizukuModeChanged = onShizukuModeChanged,
                 )
             }
         }
@@ -1415,16 +1393,9 @@ private fun SettingsPage(
     accentColor: AccentColor,
     themeMode: AppThemeMode,
     advancedMode: Boolean,
-	disableKsuModules: Boolean,
-    shizukuMode: Boolean,
-    updateStatus: UpdateStatus,
-    onCheckForUpdate: () -> Unit,
-    onStartDownload: (UpdateInfo) -> Unit,
     onAccentColorChanged: (AccentColor) -> Unit,
     onThemeModeChanged: (AppThemeMode) -> Unit,
     onAdvancedModeChanged: (Boolean) -> Unit,
-	onDisableKsuModulesChanged: (Boolean) -> Unit,
-    onShizukuModeChanged: (Boolean) -> Unit,
 ) {
     val context = LocalContext.current
     val view = LocalView.current
@@ -1437,35 +1408,6 @@ private fun SettingsPage(
     var colorMenuTop by remember { mutableStateOf(32.dp) }
     val density = LocalDensity.current
     val currentLanguageTag = AppPreferences.languageTag(context)
-
-    if (showShizukuMissingDialog) {
-        AlertDialog(
-            onDismissRequest = { showShizukuMissingDialog = false },
-            icon = { Icon(Icons.Rounded.Info, contentDescription = null) },
-            title = {
-                DialogDimAmount(0.34f)
-                Text(stringResource(R.string.shizuku_not_running_title))
-            },
-            text = { Text(stringResource(R.string.shizuku_not_running_body)) },
-            confirmButton = {
-                FilledTonalButton(onClick = {
-                    clickHaptic(view)
-                    showShizukuMissingDialog = false
-                    openShizukuManager(context)
-                }) {
-                    Text(stringResource(R.string.action_download_shizuku))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = {
-                    clickHaptic(view)
-                    showShizukuMissingDialog = false
-                }) {
-                    Text(stringResource(R.string.action_cancel))
-                }
-            },
-        )
-    }
 
     if (showLanguageDialog) {
         SideChoiceMenu(
@@ -1583,126 +1525,50 @@ private fun SettingsPage(
                     title = stringResource(R.string.advanced_mode),
                     description = stringResource(R.string.advanced_mode_description),
                     checked = advancedMode,
-                    position = SettingsCardPosition.Top,
-                    onCheckedChange = {
-                        clickHaptic(view)
-                        onAdvancedModeChanged(it)
-                    },
+                    position = SettingsCardPosition.GroupedSingle,
+                    onCheckedChange = onAdvancedModeChanged,
                 )
-
                 SettingsSwitchCard(
                     icon = Icons.Rounded.Security,
-                    title = stringResource(R.string.disable_ksu_modules),
-                    description = stringResource(R.string.disable_ksu_modules_description),
-                    checked = disableKsuModules,
+                    title = stringResource(R.string.verify_exploit_size),
+                    description = stringResource(R.string.verify_exploit_size_description),
+                    checked = verifyExploitSize,
                     position = SettingsCardPosition.Bottom,
-                    onCheckedChange = {
-                        clickHaptic(view)
-                        onDisableKsuModulesChanged(it)
-                    },
+                    onCheckedChange = onVerifyExploitSizeChanged,
                 )
             }
         }
-        item { SectionLabel(stringResource(R.string.about)) }
         item {
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                UpdateSettingsCard(
-                    status = updateStatus,
-                    position = SettingsCardPosition.Top,
-                    onCheckForUpdate = onCheckForUpdate,
-                    onStartDownload = onStartDownload,
-                )
-                SettingsCard(
-                    icon = Icons.Rounded.Info,
-                    title = stringResource(R.string.about),
-                    description = stringResource(R.string.about_description),
-                    value = "",
-                    position = SettingsCardPosition.Bottom,
-                    onClick = {
-                        clickHaptic(view)
-                        showAboutDialog = true
-                    },
-                )
-            }
+            OutlinedTextField(
+                value = payloadRepository,
+                onValueChange = { value ->
+                    payloadRepository = value
+                    AppPreferences.setPayloadRepository(context, value)
+                },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                label = { Text(stringResource(R.string.payload_repository)) },
+                placeholder = { Text("BuSung-dev/Root-My-Galaxy-Payloads") },
+                supportingText = { Text(stringResource(R.string.payload_repository_description)) },
+            )
         }
-    }
-}
-
-@Composable
-private fun UpdateSettingsCard(
-    status: UpdateStatus,
-    position: SettingsCardPosition,
-    onCheckForUpdate: () -> Unit,
-    onStartDownload: (UpdateInfo) -> Unit,
-) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val view = LocalView.current
-    val busy = status.busy
-    Card(
-        onClick = {
-            clickHaptic(view)
-            when {
-                busy -> Unit
-                status is UpdateStatus.Available -> onStartDownload(status.info)
-                else -> onCheckForUpdate()
-            }
-        },
-        modifier = Modifier.fillMaxWidth(),
-        shape = expressiveClickableCardShape(interactionSource, position),
-        interactionSource = interactionSource,
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-        ),
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 15.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            when {
-                status is UpdateStatus.Checking -> LoadingIndicator(modifier = Modifier.size(28.dp))
-                status is UpdateStatus.Downloading -> CircularProgressIndicator(
-                    progress = { status.progress },
-                    modifier = Modifier.size(28.dp),
-                )
-                else -> Icon(
-                    Icons.Rounded.SystemUpdate,
-                    contentDescription = null,
-                    modifier = Modifier.size(28.dp),
-                )
-            }
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = when (status) {
-                        is UpdateStatus.Available, is UpdateStatus.Downloading ->
-                            stringResource(R.string.updater_available_title)
-                        else -> stringResource(R.string.updater_check)
-                    },
-                    style = MaterialTheme.typography.titleMedium,
-                )
-                Text(
-                    text = when {
-                        status is UpdateStatus.Downloading -> stringResource(R.string.updater_downloading)
-                        status is UpdateStatus.Checking -> stringResource(R.string.updater_checking)
-                        status is UpdateStatus.Available ->
-                            stringResource(R.string.updater_available_body_short, status.info.versionName)
-                        status is UpdateStatus.UpToDate -> stringResource(R.string.updater_up_to_date)
-                        status is UpdateStatus.Failed -> stringResource(R.string.updater_failed)
-                        else -> ""
-                    },
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-            if (status is UpdateStatus.Available) {
-                Text(
-                    text = stringResource(R.string.updater_button_download),
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.primary,
-                    maxLines = 1,
-                )
+        item {
+            SettingsCard(
+                icon = Icons.Rounded.UploadFile,
+                title = stringResource(R.string.custom_exploit_payload),
+                description = customPayloadError
+                    ?: stringResource(R.string.custom_exploit_payload_description),
+                value = customPayloadName ?: stringResource(R.string.custom_payload_not_selected),
+                onClick = { customPayloadPicker.launch(arrayOf("application/octet-stream", "application/x-sharedlib", "*/*")) },
+            )
+            if (customPayloadName != null) {
+                TextButton(onClick = {
+                    CustomPayloadStore.clear(context)
+                    customPayloadName = null
+                    customPayloadError = null
+                }) {
+                    Text(stringResource(R.string.custom_payload_remove))
+                }
             }
         }
     }
