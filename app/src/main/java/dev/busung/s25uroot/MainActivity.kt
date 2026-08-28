@@ -14,7 +14,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.result.ManagedActivityResultLauncher
 import androidx.activity.viewModels
 import androidx.annotation.StringRes
 import androidx.compose.animation.AnimatedContent
@@ -167,6 +167,9 @@ class MainActivity : ComponentActivity() {
     private var accentColor by mutableStateOf(AccentColor.Dynamic)
     private var themeMode by mutableStateOf(AppThemeMode.System)
     private var advancedMode by mutableStateOf(false)
+    private var shizukuMode by mutableStateOf(false)
+    private var verifyExploitSize by mutableStateOf(true)
+    private var payloadRepository by mutableStateOf("")
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -175,6 +178,9 @@ class MainActivity : ComponentActivity() {
         accentColor = AppPreferences.accentColor(this)
         themeMode = AppPreferences.themeMode(this)
         advancedMode = AppPreferences.advancedMode(this)
+        shizukuMode = AppPreferences.shizukuMode(this)
+        verifyExploitSize = AppPreferences.verifyExploitSize(this)
+        payloadRepository = AppPreferences.payloadRepository(this)
         setContent {
             RootMyGalaxyTheme(accentColor = accentColor, themeMode = themeMode) {
                 RootApp(
@@ -182,6 +188,9 @@ class MainActivity : ComponentActivity() {
                     accentColor = accentColor,
                     themeMode = themeMode,
                     advancedMode = advancedMode,
+                    shizukuMode = shizukuMode,
+                    verifyExploitSize = verifyExploitSize,
+                    payloadRepository = payloadRepository,
                     onAccentColorChanged = { color ->
                         AppPreferences.setAccentColor(this, color)
                         accentColor = color
@@ -193,6 +202,18 @@ class MainActivity : ComponentActivity() {
                     onAdvancedModeChanged = { enabled ->
                         AppPreferences.setAdvancedMode(this, enabled)
                         advancedMode = enabled
+                    },
+                    onShizukuModeChanged = { enabled ->
+                        AppPreferences.setShizukuMode(this, enabled)
+                        shizukuMode = enabled
+                    },
+                    onVerifyExploitSizeChanged = { enabled ->
+                        AppPreferences.setVerifyExploitSize(this, enabled)
+                        verifyExploitSize = enabled
+                    },
+                    onPayloadRepositoryChanged = { value ->
+                        AppPreferences.setPayloadRepository(this, value)
+                        payloadRepository = value
                     },
                     openInstaller = { profileId ->
                         val installer = Intent(this, InstallActivity::class.java)
@@ -274,9 +295,15 @@ private fun RootApp(
     accentColor: AccentColor,
     themeMode: AppThemeMode,
     advancedMode: Boolean,
+    shizukuMode: Boolean,
+    verifyExploitSize: Boolean,
+    payloadRepository: String,
     onAccentColorChanged: (AccentColor) -> Unit,
     onThemeModeChanged: (AppThemeMode) -> Unit,
     onAdvancedModeChanged: (Boolean) -> Unit,
+    onShizukuModeChanged: (Boolean) -> Unit,
+    onVerifyExploitSizeChanged: (Boolean) -> Unit,
+    onPayloadRepositoryChanged: (String) -> Unit,
     openInstaller: (String?) -> Unit,
 ) {
     val installState by installViewModel.state.collectAsStateWithLifecycle()
@@ -293,6 +320,22 @@ private fun RootApp(
     val scope = rememberCoroutineScope()
     var updateStatus by remember { mutableStateOf<UpdateStatus>(UpdateStatus.Idle) }
     var updateCardDismissed by remember { mutableStateOf(false) }
+    var customPayloadName by remember { mutableStateOf(CustomPayloadStore.displayName(context)) }
+    var customPayloadError by remember { mutableStateOf<String?>(null) }
+    val customPayloadPicker = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument(),
+    ) { uri ->
+        if (uri != null) {
+            runCatching { CustomPayloadStore.import(context, uri) }
+                .onSuccess {
+                    customPayloadName = it
+                    customPayloadError = null
+                }
+                .onFailure { error ->
+                    customPayloadError = error.message ?: error.javaClass.simpleName
+                }
+        }
+    }
     val checkForUpdate: () -> Unit = {
         if (!updateStatus.busy) {
             updateStatus = UpdateStatus.Checking
@@ -495,9 +538,18 @@ private fun RootApp(
                     accentColor = accentColor,
                     themeMode = themeMode,
                     advancedMode = advancedMode,
+                    shizukuMode = shizukuMode,
+                    verifyExploitSize = verifyExploitSize,
+                    payloadRepository = payloadRepository,
                     onAccentColorChanged = onAccentColorChanged,
                     onThemeModeChanged = onThemeModeChanged,
                     onAdvancedModeChanged = onAdvancedModeChanged,
+                    onShizukuModeChanged = onShizukuModeChanged,
+                    onVerifyExploitSizeChanged = onVerifyExploitSizeChanged,
+                    onPayloadRepositoryChanged = onPayloadRepositoryChanged,
+                    customPayloadName = customPayloadName,
+                    customPayloadError = customPayloadError,
+                    customPayloadPicker = customPayloadPicker,
                 )
             }
         }
@@ -1393,9 +1445,18 @@ private fun SettingsPage(
     accentColor: AccentColor,
     themeMode: AppThemeMode,
     advancedMode: Boolean,
+    shizukuMode: Boolean,
+    verifyExploitSize: Boolean,
+    payloadRepository: String,
     onAccentColorChanged: (AccentColor) -> Unit,
     onThemeModeChanged: (AppThemeMode) -> Unit,
     onAdvancedModeChanged: (Boolean) -> Unit,
+    onShizukuModeChanged: (Boolean) -> Unit,
+    onVerifyExploitSizeChanged: (Boolean) -> Unit,
+    onPayloadRepositoryChanged: (String) -> Unit,
+    customPayloadName: String?,
+    customPayloadError: String?,
+    customPayloadPicker: ManagedActivityResultLauncher<Array<String>, Uri?>,
 ) {
     val context = LocalContext.current
     val view = LocalView.current
@@ -1542,8 +1603,7 @@ private fun SettingsPage(
             OutlinedTextField(
                 value = payloadRepository,
                 onValueChange = { value ->
-                    payloadRepository = value
-                    AppPreferences.setPayloadRepository(context, value)
+                    onPayloadRepositoryChanged(value)
                 },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,

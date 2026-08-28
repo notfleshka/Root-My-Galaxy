@@ -68,6 +68,42 @@ object AppPreferences {
             .apply()
     }
 
+    fun disableKsuModules(context: Context): Boolean =
+        prefs(context).getBoolean(DISABLE_KSU_MODULES, false)
+
+    fun setDisableKsuModules(context: Context, enabled: Boolean) {
+        prefs(context).edit()
+            .putBoolean(DISABLE_KSU_MODULES, enabled)
+            .apply()
+    }
+
+    fun shizukuMode(context: Context): Boolean =
+        prefs(context).getBoolean(SHIZUKU_MODE, false)
+
+    fun setShizukuMode(context: Context, enabled: Boolean) {
+        prefs(context).edit()
+            .putBoolean(SHIZUKU_MODE, enabled)
+            .apply()
+    }
+
+    fun verifyExploitSize(context: Context): Boolean =
+        prefs(context).getBoolean(VERIFY_EXPLOIT_SIZE, true)
+
+    fun setVerifyExploitSize(context: Context, enabled: Boolean) {
+        prefs(context).edit()
+            .putBoolean(VERIFY_EXPLOIT_SIZE, enabled)
+            .apply()
+    }
+
+    fun payloadRepository(context: Context): String =
+        prefs(context).getString(PAYLOAD_REPOSITORY, "").orEmpty()
+
+    fun setPayloadRepository(context: Context, repository: String) {
+        prefs(context).edit()
+            .putString(PAYLOAD_REPOSITORY, repository)
+            .apply()
+    }
+
     @Synchronized
     fun consumeInstallRequest(context: Context, requestId: String?): Boolean {
         if (requestId.isNullOrBlank()) return false

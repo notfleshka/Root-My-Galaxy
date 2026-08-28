@@ -219,7 +219,7 @@ class InstallViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 	
-    private fun DisableConflictingKSUModules() {
+    private suspend fun DisableConflictingKSUModules() {
         val script = "/data/adb/modules"
         val backup = "${script}_bak"
 		
