@@ -10,11 +10,11 @@ import android.view.View
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.ManagedActivityResultLauncher
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.activity.result.ManagedActivityResultLauncher
 import androidx.activity.viewModels
 import androidx.annotation.StringRes
 import androidx.compose.animation.AnimatedContent
@@ -550,6 +550,11 @@ private fun RootApp(
                     customPayloadName = customPayloadName,
                     customPayloadError = customPayloadError,
                     customPayloadPicker = customPayloadPicker,
+                    onCustomPayloadCleared = {
+                        CustomPayloadStore.clear(context)
+                        customPayloadName = null
+                        customPayloadError = null
+                    },
                 )
             }
         }
@@ -1457,6 +1462,7 @@ private fun SettingsPage(
     customPayloadName: String?,
     customPayloadError: String?,
     customPayloadPicker: ManagedActivityResultLauncher<Array<String>, Uri?>,
+    onCustomPayloadCleared: () -> Unit,
 ) {
     val context = LocalContext.current
     val view = LocalView.current
@@ -1622,11 +1628,7 @@ private fun SettingsPage(
                 onClick = { customPayloadPicker.launch(arrayOf("application/octet-stream", "application/x-sharedlib", "*/*")) },
             )
             if (customPayloadName != null) {
-                TextButton(onClick = {
-                    CustomPayloadStore.clear(context)
-                    customPayloadName = null
-                    customPayloadError = null
-                }) {
+                TextButton(onClick = onCustomPayloadCleared) {
                     Text(stringResource(R.string.custom_payload_remove))
                 }
             }
