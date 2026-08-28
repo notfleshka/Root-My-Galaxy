@@ -2,6 +2,7 @@
 
 <img width="108" height="108" alt="sprout_icon_108" src="https://github.com/user-attachments/assets/2ba0e360-0876-489c-b256-f75df7589785" />
 
+This is a fork which adds changes what I personally need (mostly just merges prs earlier then the main repo)
 
 Root My Galaxy is a one-click installer for explicitly
 supported Samsung model and kernel combinations. The application itself is kept separate
